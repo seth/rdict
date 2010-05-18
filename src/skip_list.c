@@ -14,7 +14,7 @@ typedef struct _lnode {
     int hash_key;
     const char *key;
     lvalue *value;
-    struct _lnode **forward;
+    struct _lnode *forward[1];
 } lnode;
 
 typedef struct _skip_list {
@@ -25,15 +25,11 @@ typedef struct _skip_list {
     long rand_bits_left;
 } skip_list;
 
-lnode * sl_make_node(int levels)
-{
-    /* does this work? */
-    /* return (lnode *) malloc(sizeof(lnode) + (levels * sizeof(lnode *))); */
-    /* FIXME: error check */
-    lnode *node = malloc(sizeof(lnode));
-    node->forward = malloc(sizeof(lnode *) * levels);
-    return node;
-}
+#define sl_make_node(n) (lnode *)malloc(sizeof(lnode)+((n)*sizeof(lnode *)))
+/* static lnode * sl_make_node(int levels) */
+/* { */
+/*     return (lnode *) malloc(sizeof(lnode) + (levels * sizeof(lnode *))); */
+/* } */
 
 skip_list * sl_make_list()
 {
@@ -175,12 +171,36 @@ int sl_get(skip_list *list,
     return found;
 }
 
-/* TODO: 
-int sl_delete(skip_list *list, const char *key)
+int sl_remove(skip_list *list, const char *key)
 {
+    int k, m, found = 0;
+    lnode *update[MAX_LEVELS], *p, *q;
+    unsigned int hash = hashdjb2(key);
 
+    p = list->head;
+    k = m = list->level;
+    for (k = list->level; k >= 0; k--) {
+        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        update[k] = p;
+    }
+    if (q->hash_key == hash) {
+        /* FIXME: here we will compare the actual key value
+           and walk while hash_key is same to try and find a match.
+        */
+        found = 1;
+        for (k = 0; k <= m; k++) {
+            p = update[k];
+            if (p->forward[k] != q) break;
+            p->forward[k] = q->forward[k];
+        }
+        ep_remove(list->epdb, q->value->pvect, q->value->index);
+        free(q);
+        while (list->head->forward[m] == NULL && m > 0) m--;
+        list->level = m;
+    }
+    return found;
 }
- */
+
 
 /* .Call API */
 
@@ -219,4 +239,11 @@ SEXP rdict_get(SEXP xp, SEXP key)
         return ans;
     else
         return R_NilValue;
+}
+
+SEXP rdict_remove(SEXP xp, SEXP key)
+{
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    int found = sl_remove(list, CHAR(STRING_ELT(key, 0)));
+    return Rf_ScalarLogical(found);
 }
