@@ -27,7 +27,12 @@ typedef struct _skip_list {
 
 lnode * sl_make_node(int levels)
 {
-    return (lnode *) malloc(sizeof(lnode) + (levels * sizeof(lnode *)));
+    /* does this work? */
+    /* return (lnode *) malloc(sizeof(lnode) + (levels * sizeof(lnode *))); */
+    /* FIXME: error check */
+    lnode *node = malloc(sizeof(lnode));
+    node->forward = malloc(sizeof(lnode *) * levels);
+    return node;
 }
 
 skip_list * sl_make_list()
@@ -86,11 +91,132 @@ int sl_random_level(skip_list *list)
     return level > MAX_LEVEL ? MAX_LEVEL : level;
 }
 
+unsigned int hashdjb2(const char *key)
+{
+/* 
+djb2 a simple hash function
+From: http://www.cse.yorku.ca/~oz/hash.html 
+*/
+    unsigned int hash = 5381;
+    unsigned int c;
+    while ((c = *key++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    return hash;
+}
+
 void sl_put(skip_list *list,
             const char *key,
             SEXP s_value)
 {
-    /* compute hash code */
-    /* store s_value in epdb and create an lvalue */
+    SEXP pvect;
+    int pindex, k;
+    lvalue *lval;
+    lnode *update[MAX_LEVELS], *p, *q;
+    unsigned int hash = hashdjb2(key);
+
+    ep_store(list->epdb, s_value, &pvect, &pindex);    /* FIXME: error check */
+    Rprintf("DEBUG: epdb store: %p %d\n", pvect, pindex);
+    lval = malloc(sizeof(lvalue));    /* FIXME: error check */
+    lval->pvect = pvect;
+    lval->index = pindex;
     /* put in list */
+    
+    p = list->head;
+    k = list->level;
+    for (k = list->level; k >= 0; k--) {
+        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        update[k] = p;
+    }
+    if (q->hash_key == hash) {
+        /* FIXME: here we will compare the actual key value
+           and walk while hash_key is same to try and find a match.
+         */
+    }
+    k = sl_random_level(list);
+    if (k > list->level) {
+        k = ++list->level;
+        update[k] = list->head;
+    }
+    q = sl_make_node(k);        /* FIXME: error check */
+    Rprintf("DEBUG: new sl node level = %d\n", k);
+    q->hash_key = hash;
+    q->key = key;
+    q->value = lval;
+    while (k >= 0) {
+        p = update[k];
+        if (p) {
+            q->forward[k] = p->forward[k];
+            p->forward[k] = q;
+        } else {
+            q->forward[k] = NULL;
+        }
+        k--;
+    }
+}
+
+int sl_get(skip_list *list,
+            const char *key,
+            SEXP *s_value)
+{
+    int hash = hashdjb2(key), found = 0, k;
+    lnode *p, *q;
+
+    p = list->head;
+    k = list->level;
+    while (k >= 0) {
+        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        k--;
+    }
+    if (q && q->hash_key == hash) {
+        /* FIXME: verify match on key */
+        found = 1;
+        *s_value = VECTOR_ELT(q->value->pvect, q->value->index);
+    }
+    return found;
+}
+
+/* TODO: 
+int sl_delete(skip_list *list, const char *key)
+{
+
+}
+ */
+
+/* .Call API */
+
+static void _finalize_rdict(SEXP xp)
+{
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    sl_free_list(list);
+    R_ClearExternalPtr(xp);
+}
+
+SEXP rdict_new()
+{
+    SEXP xp;
+
+    skip_list *list = sl_make_list();
+    xp = R_MakeExternalPtr(list, mkString("rdict skip_list"), R_NilValue);
+    PROTECT(xp);
+    R_RegisterCFinalizerEx(xp, _finalize_rdict, TRUE);
+    UNPROTECT(1);
+    return xp;
+}
+
+SEXP rdict_put(SEXP xp, SEXP key, SEXP value)
+{
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    sl_put(list, CHAR(STRING_ELT(key, 0)), value);
+    return R_NilValue;
+}
+
+SEXP rdict_get(SEXP xp, SEXP key)
+{
+    SEXP ans;
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    int found = sl_get(list, CHAR(STRING_ELT(key, 0)), &ans);
+    if (found)
+        return ans;
+    else
+        return R_NilValue;
 }

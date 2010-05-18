@@ -1,0 +1,3 @@
+* rdict
+** TODO Either copy key string or protect CHARSXP
+** TODO Add collision handling
