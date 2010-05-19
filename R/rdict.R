@@ -22,3 +22,8 @@ rdict_rm <- function(rdict, key)
 {
     .Call(.rdict_remove, rdict, as.character(key))
 }
+
+rdict_stats <- function(rdict)
+{
+    .Call(.rdict_stats, rdict)
+}

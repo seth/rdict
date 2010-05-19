@@ -12,6 +12,7 @@ typedef struct _lnode {
     int key_index;
     SEXP value_pvect;
     int value_index;
+    int num_levels;             /* temp for debug */
     /* forward skip list must come last */
     struct _lnode *forward[1];
 } lnode;
@@ -44,6 +45,7 @@ skip_list * sl_make_list()
     for (i = 0; i < MAX_LEVELS; i++) {
         list->head->forward[i] = NULL;
     }
+    list->head->num_levels = MAX_LEVELS; /* DEBUG */
     list->epdb = ep_new(1024);  /* FIXME hard-coded v_size */
     if (!list->epdb) {
         free(list->head);
@@ -84,15 +86,23 @@ static void sl_free_list(skip_list *list)
 
 int sl_random_level(skip_list *list)
 {
-    int level = 0, b;
+    int level = 0, b, i;
     do {
         b = list->rand_bits & 3;
         if (!b) level++;
         list->rand_bits >>= 2;
-        if (--(list->rand_bits_left) == 0) {
-            list->rand_bits = random();
-            list->rand_bits_left = ((sizeof(long) * 8) - 1) / 2;
+        for (i = 0; i < 2; i++) {
+            if (list->rand_bits_left == 0) {
+                list->rand_bits = random();
+                list->rand_bits_left = ((sizeof(long) * 8) - 1) / 2;
+                break;
+            }
+            --list->rand_bits_left;
         }
+        /* if (list->rand_bits_left == 0) { */
+        /*     list->rand_bits = random(); */
+        /*     list->rand_bits_left = ((sizeof(long) * 8) - 1) / 2; */
+        /* } */
     } while (!b);
     return level > MAX_LEVEL ? MAX_LEVEL : level;
 }
@@ -153,7 +163,9 @@ int sl_put(skip_list *list,
             update[k] = list->head;
         }
         q = sl_make_node(k);        /* FIXME: error check */
+        /* DEBUG */ q->num_levels = k;
     }
+
     q->key_pvect = key_pvect;
     q->key_index = key_index;
     q->value_pvect = value_pvect;
@@ -295,4 +307,36 @@ SEXP rdict_remove(SEXP xp, SEXP key)
     skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
     int found = sl_remove(list, CHAR(STRING_ELT(key, 0)));
     return Rf_ScalarLogical(found);
+}
+
+SEXP rdict_stats(SEXP xp)
+{
+    SEXP ans, ans_nms, levels, keys;
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    lnode *p, *q;
+    int i, *ilev;
+    char buf[64];
+
+    /* level, hash_key */
+    PROTECT(ans = Rf_allocVector(VECSXP, 2));
+    PROTECT(levels = Rf_allocVector(INTSXP, list->item_count));
+    PROTECT(keys = Rf_allocVector(STRSXP, list->item_count));
+    SET_VECTOR_ELT(ans, 0, levels);
+    SET_VECTOR_ELT(ans, 1, keys);
+    PROTECT(ans_nms = Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(ans_nms, 0, mkChar("levels"));
+    SET_STRING_ELT(ans_nms, 1, mkChar("keys"));
+    Rf_setAttrib(ans, R_NamesSymbol, ans_nms);
+
+    q = list->head;
+    ilev = INTEGER(levels);
+    for (i = 0; i < list->item_count; i++) {
+        snprintf(buf, 64, "%lu", q->hash_key);
+        SET_STRING_ELT(keys, i, mkChar(buf));
+        ilev[i] = q->num_levels;
+        q = q->forward[0];
+    }
+    
+    UNPROTECT(4);
+    return ans;
 }
