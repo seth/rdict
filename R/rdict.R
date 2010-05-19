@@ -8,6 +8,11 @@ rdict_put <- function(rdict, key, value)
     invisible(.Call(.rdict_put, rdict, as.character(key), value))
 }
 
+rdict_mput <- function(rdict, aList)
+{
+    invisible(.Call(.rdict_mput, rdict, aList))
+}
+
 rdict_get <- function(rdict, key)
 {
     .Call(.rdict_get, rdict, as.character(key))

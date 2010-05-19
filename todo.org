@@ -1,7 +1,5 @@
 * rdict
-** TODO Refactor to remove need for struct _lvalue
-** TODO Either copy key string or protect CHARSXP
-** TODO Make key a long instead of int.
+** TODO Add list keys function
 ** TODO Investigate storing CHARSXP instead of char*
 Then comparison could be done against CHARSXP pointer.
 And in this case, you could even avoid the hash call and simply
@@ -9,6 +7,11 @@ use the CHARSXP pointer address (or a simple xor hash based on it to
 get to 32bit)
 ** TODO Add collision handling
 ** TODO Make hash function pluggable
+One idea is to test using the CHARSXP's address as hash code.
 ** TODO Make max level stored in sl init arg
 ** TODO Make pvect size sl init arg
 ** TODO Add a stats extraction function
+** DONE Either copy key string or protect CHARSXP
+   CLOSED: [2010-05-18 Tue 15:50]
+CHARSXP for key is stored in the epdb.  This adds storage overhead to
+list nodes, but avoids having to copy the key data.
