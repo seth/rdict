@@ -95,10 +95,6 @@ int sl_random_level(skip_list *list)
             }
             --list->rand_bits_left;
         }
-        /* if (list->rand_bits_left == 0) { */
-        /*     list->rand_bits = random(); */
-        /*     list->rand_bits_left = ((sizeof(long) * 8) - 1) / 2; */
-        /* } */
     } while (!b);
     return level > MAX_LEVEL ? MAX_LEVEL : level;
 }
@@ -226,10 +222,15 @@ int sl_remove(skip_list *list, const char *key)
         while ((q = p->forward[k]) && q->hash_key < hash) p = q;
         update[k] = p;
     }
-    if (q->hash_key == hash) {
-        /* FIXME: here we will compare the actual key value
-           and walk while hash_key is same to try and find a match.
-        */
+    p = q;
+    while (p && p->hash_key == hash) { /* handle hash collisions */
+        if (p->key == key) {
+            q = p;
+            break;
+        }
+        p = p->forward[0];
+    }
+    if (q && q->hash_key == hash) {
         found = 1;
         for (k = 0; k <= m; k++) {
             p = update[k];
