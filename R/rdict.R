@@ -27,3 +27,9 @@ rdict_stats <- function(rdict)
 {
     .Call(.rdict_stats, rdict)
 }
+
+rdict_keys <- function(rdict)
+{
+    .Call(.rdict_keys, rdict)
+}
+

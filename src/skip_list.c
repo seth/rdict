@@ -305,6 +305,29 @@ SEXP rdict_remove(SEXP xp, SEXP key)
     return Rf_ScalarLogical(found);
 }
 
+SEXP Rf_sortVector(SEXP);       /* XXX: undocumented R API */
+
+SEXP rdict_keys(SEXP xp)
+{
+    SEXP keys;
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    lnode *q;
+    int i;
+
+    PROTECT(keys = Rf_allocVector(STRSXP, list->item_count));
+    if (list->item_count > 0) {
+        q = list->head->forward[0];
+        for (i = 0; i < list->item_count; i++) {
+            SET_STRING_ELT(keys, i, VECTOR_ELT(q->key_pvect, q->key_index));
+            q = q->forward[0];
+        }
+        /* XXX: not a documented R API */
+        Rf_sortVector(keys);
+    }
+    UNPROTECT(1);
+    return keys;
+}
+
 SEXP rdict_stats(SEXP xp)
 {
     SEXP ans, ans_nms, levels, keys;
@@ -329,13 +352,14 @@ SEXP rdict_stats(SEXP xp)
         ilev[i] = list->level_stats[i];
     }
     
-    q = list->head;
-    for (i = 0; i < list->item_count; i++) {
-        snprintf(buf, 64, "%lu", q->hash_key);
-        SET_STRING_ELT(keys, i, mkChar(buf));
-        q = q->forward[0];
+    if (list->item_count > 0) {
+        q = list->head->forward[0];
+        for (i = 0; i < list->item_count; i++) {
+            snprintf(buf, 64, "%lu", q->hash_key);
+            SET_STRING_ELT(keys, i, mkChar(buf));
+            q = q->forward[0];
+        }
     }
-    
     UNPROTECT(4);
     return ans;
 }
