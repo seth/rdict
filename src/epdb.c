@@ -105,7 +105,7 @@ int ep_store(epdb *db, SEXP s, SEXP *pv, int *i)
     } else {
         struct pvect *pvnode = db->pvect_list;
         *pv = pvnode->pvect;
-        if (pvnode->free_index < LENGTH(*pv)) {
+        if (pvnode->free_index < LENGTH(*pv) - 1) {
             *i = pvnode->free_index;
             pvnode->free_index++;
         } else {                /* need a new pvect */
