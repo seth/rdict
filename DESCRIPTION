@@ -7,3 +7,5 @@ Maintainer: Seth Falcon <seth@userprimary.net>
 Description: Provides a hash-table data structure in R
   more efficient than using R's environments
 License: Artistic-2.0
+Suggests: RUnit
+

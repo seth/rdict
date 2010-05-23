@@ -203,7 +203,8 @@ int sl_get(skip_list *list,
         }
         p = p->forward[0];
     }
-    if (q) {
+    if (q && q->hash_key == hash) {
+        /* FIXME: deal w/ hash collisions */
         found = 1;
         *s_value = VECTOR_ELT(q->value_pvect, q->value_index);
     }
@@ -214,7 +215,7 @@ int sl_remove(skip_list *list, const char *key)
 {
     int k, m, found = 0;
     lnode *update[MAX_LEVELS], *p, *q;
-    unsigned int hash = hashdjb2(key);
+    unsigned long hash = hashdjb2(key);
 
     p = list->head;
     k = m = list->level;
