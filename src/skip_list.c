@@ -5,6 +5,19 @@
 #include <stdlib.h>
 #include "epdb.h"
 
+#define RDICT_DEBUG
+
+#ifdef RDICT_DEBUG
+  #define WHERESTR  "[file %s, line %d]: "
+  #define WHEREARG  __FILE__, __LINE__
+  #define DEBUGPRINT2(...) fprintf(stderr, __VA_ARGS__)
+  #define DEBUGPRINT(_fmt, ...)  DEBUGPRINT2(WHERESTR _fmt, WHEREARG, __VA_ARGS__)
+#else
+#define DEBUGPRINT(_fmt, ...) \
+  do { if (0) DEBUGPRINT2(WHERESTR _fmt, WHEREARG, __VA_ARGS__); } while (0)
+#endif
+
+
 typedef struct _lnode {
     long hash_key;
     const char *key;
@@ -57,6 +70,7 @@ skip_list * sl_make_list()
 
 static void sl_free_lnode(epdb *db, lnode *node)
 {
+    DEBUGPRINT("sl_free_lnode: %lu\t'%s'\n", node->hash_key, node->key);
     /* FIXME: should check for errors from ep_remove */
     ep_remove(db, node->key_pvect, node->key_index);
     ep_remove(db, node->value_pvect, node->value_index);
