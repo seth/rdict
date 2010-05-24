@@ -107,7 +107,6 @@ int ep_store(epdb *db, SEXP s, SEXP *pv, int *i)
         *pv = pvnode->pvect;
         if (pvnode->free_index < LENGTH(*pv) - 1) {
             *i = pvnode->free_index;
-            pvnode->free_index++;
         } else {                /* need a new pvect */
             pvnode = _make_pvect_node(db->v_size, NULL);
             if (!pvnode) return 0;
@@ -116,6 +115,7 @@ int ep_store(epdb *db, SEXP s, SEXP *pv, int *i)
             pvnode->next = db->pvect_list;
             db->pvect_list = pvnode;
         }
+        pvnode->free_index++;
     }
     db->pcount++;
     SET_VECTOR_ELT(*pv, *i, s);

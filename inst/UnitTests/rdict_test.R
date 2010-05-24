@@ -39,6 +39,7 @@ test_rdict_rm_basic <- function()
     for (k in rm_list) rdict_rm(d, k)
     for (k in rm_list) checkEquals(NULL, rdict_get(d, k))
 
-    still_have <- keys[!(keys %in% rm_list)]
-    for (k in still_have) checkEquals(vals[k], rdict_get(d, k))
+    still_have <- seq_along(keys)[-(match(rm_list, keys))]
+    for (i in still_have)
+        checkEquals(vals[i], rdict_get(d, keys[i]))
 }
