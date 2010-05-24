@@ -70,7 +70,6 @@ skip_list * sl_make_list()
 
 static void sl_free_lnode(epdb *db, lnode *node)
 {
-    DEBUGPRINT("sl_free_lnode: %lu\t'%s'\n", node->hash_key, node->key);
     /* FIXME: should check for errors from ep_remove */
     ep_remove(db, node->key_pvect, node->key_index);
     ep_remove(db, node->value_pvect, node->value_index);

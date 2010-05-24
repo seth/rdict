@@ -43,3 +43,19 @@ test_rdict_rm_basic <- function()
     for (i in still_have)
         checkEquals(vals[i], rdict_get(d, keys[i]))
 }
+
+test_rdict_keys <- function()
+{
+    set.seed(0x990)
+    s <- seq_len(1000L)
+    keys <- paste("k_", s, sep = "")
+    vals <- sample(s)
+
+    d <- rdict_new()
+    for (i in seq_along(keys)) {
+        rdict_put(d, keys[i], vals[i])
+    }
+
+    got <- rdict_keys(d)
+    checkEquals(sort(keys), sort(got))
+}
