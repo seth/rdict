@@ -320,8 +320,6 @@ SEXP rdict_remove(SEXP xp, SEXP key)
     return Rf_ScalarLogical(found);
 }
 
-SEXP Rf_sortVector(SEXP);       /* XXX: undocumented R API */
-
 SEXP rdict_keys(SEXP xp)
 {
     SEXP keys;
@@ -336,8 +334,6 @@ SEXP rdict_keys(SEXP xp)
             SET_STRING_ELT(keys, i, VECTOR_ELT(q->key_pvect, q->key_index));
             q = q->forward[0];
         }
-        /* XXX: not a documented R API */
-        Rf_sortVector(keys);
     }
     UNPROTECT(1);
     return keys;
