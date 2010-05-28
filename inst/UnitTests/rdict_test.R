@@ -59,3 +59,17 @@ test_rdict_keys <- function()
     got <- rdict_keys(d)
     checkEquals(sort(keys), sort(got))
 }
+
+test_rdict_mput <- function()
+{
+    set.seed(0x3440)
+    ex1 <- seq_len(5000)
+    names(ex1) <- paste("id_", ex1, sep="")
+    ex1 <- as.list(ex1)
+    d <- rdict_new()
+    rdict_mput(d, ex1)
+    checkTrue(setequal(names(ex1), rdict_keys(d)))
+    for (k in sample(names(ex1))) {
+        checkEquals(ex1[[k]], rdict_get(d, k))
+    }
+}

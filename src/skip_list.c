@@ -20,8 +20,6 @@
 
 typedef struct _lnode {
     SEXP hash_key;
-    SEXP key_pvect;
-    int key_index;
     SEXP value_pvect;
     int value_index;
     /* forward skip list must come last */
@@ -70,7 +68,12 @@ skip_list * sl_make_list()
 static void sl_free_lnode(epdb *db, lnode *node)
 {
     /* FIXME: should check for errors from ep_remove */
-    ep_remove(db, node->key_pvect, node->key_index);
+    /* remove key first, preserve order in free list.  The order must
+       be the reverse of that used in the calls to ep_store.  We
+       always store or remove two items.  When removing, the items go
+       on a free list maintained as a linked list.
+     */
+    ep_remove(db, node->value_pvect, node->value_index + 1);
     ep_remove(db, node->value_pvect, node->value_index);
     free(node);
     node = NULL;
@@ -119,9 +122,15 @@ int sl_put(skip_list *list,
     int key_index, value_index, k, do_replace = 0;
     lnode *update[MAX_LEVELS], *p, *q;
 
-    if (!ep_store(list->epdb, s_value, &value_pvect, &value_index)
-        || !ep_store(list->epdb, key, &key_pvect, &key_index)) {
+    if (!ep_store(list->epdb, s_value, &value_pvect, &value_index))
         return 0;
+    if (!ep_store(list->epdb, key, &key_pvect, &key_index)) {
+        ep_remove(list->epdb, value_pvect, value_index);
+        return 0;
+    }
+    if ((key_pvect != value_pvect) || (value_index + 1 != key_index)) {
+        Rf_error("sl_put internal error in epdb: (%p, %p), (%d, %d)",
+                 key_pvect, value_pvect, key_index, value_index);
     }
     /* We don't duplicate s_value, but increment it's named property
        in hopes that other code will duplicate before modification
@@ -149,8 +158,6 @@ int sl_put(skip_list *list,
         list->level_stats[k]++;
     }
 
-    q->key_pvect = key_pvect;
-    q->key_index = key_index;
     q->value_pvect = value_pvect;
     q->value_index = value_index;
     q->hash_key = key;
