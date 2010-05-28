@@ -345,3 +345,26 @@ SEXP rdict_count(SEXP xp)
     skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
     return ScalarInteger(list->item_count);
 }
+
+SEXP rdict_as_list(SEXP xp)
+{
+    SEXP ans, keys;
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    lnode *q;
+    int i;
+
+    PROTECT(keys = Rf_allocVector(STRSXP, list->item_count));
+    PROTECT(ans = Rf_allocVector(VECSXP, list->item_count));
+    if (list->item_count > 0) {
+        q = list->head->forward[0];
+        for (i = 0; i < list->item_count; i++) {
+            SET_STRING_ELT(keys, i, q->hash_key);
+            SET_VECTOR_ELT(ans, i,
+                           VECTOR_ELT(q->value_pvect, q->value_index));
+            q = q->forward[0];
+        }
+    }
+    Rf_setAttrib(ans, R_NamesSymbol, keys);
+    UNPROTECT(2);
+    return ans;
+}

@@ -72,6 +72,10 @@ test_rdict_mput <- function()
     for (k in sample(names(ex1))) {
         checkEquals(ex1[[k]], rdict_get(d, k))
     }
+
+    ll <- rdict_as_list(d)
+    myfix <- function(x) x[sort(names(x))]
+    checkEquals(myfix(ex1), myfix(ll))
 }
 
 test_rdict_count <- function()

@@ -38,3 +38,8 @@ rdict_count <- function(rdict)
     .Call(.rdict_count, rdict)
 }
 
+rdict_as_list <- function(rdict)
+{
+    .Call(.rdict_as_list, rdict)
+}
+
