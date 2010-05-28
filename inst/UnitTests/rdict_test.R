@@ -73,3 +73,24 @@ test_rdict_mput <- function()
         checkEquals(ex1[[k]], rdict_get(d, k))
     }
 }
+
+test_rdict_count <- function()
+{
+    set.seed(0x778)
+    keys <- paste("id_", seq_len(2000), sep="")
+    d <- rdict_new()
+    checkEquals(0L, rdict_count(d))
+    wantCount <- 0L
+    for (k in sample(keys)) {
+        rdict_put(d, k, 1L)
+        wantCount <- wantCount + 1L
+        checkEquals(wantCount, rdict_count(d))
+    }
+
+    for (k in sample(keys)) {
+        rdict_rm(d, k)
+        wantCount <- wantCount - 1L
+        checkEquals(wantCount, rdict_count(d))
+    }
+    checkEquals(0L, rdict_count(d))
+}

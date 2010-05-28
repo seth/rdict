@@ -33,3 +33,8 @@ rdict_keys <- function(rdict)
     .Call(.rdict_keys, rdict)
 }
 
+rdict_count <- function(rdict)
+{
+    .Call(.rdict_count, rdict)
+}
+

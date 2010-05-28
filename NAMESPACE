@@ -5,6 +5,7 @@ useDynLib("rdict",
           .rdict_get = rdict_get,
           .rdict_remove = rdict_remove,
           .rdict_stats = rdict_stats,
-          .rdict_keys = rdict_keys)
+          .rdict_keys = rdict_keys,
+          .rdict_count = rdict_count)
 
 exportPattern("^[^\\.]")

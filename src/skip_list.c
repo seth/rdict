@@ -339,3 +339,9 @@ SEXP rdict_stats(SEXP xp)
     UNPROTECT(4);
     return ans;
 }
+
+SEXP rdict_count(SEXP xp)
+{
+    skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
+    return ScalarInteger(list->item_count);
+}
