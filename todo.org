@@ -1,17 +1,25 @@
 * rdict
-** TODO Add list keys function
-** TODO Investigate storing CHARSXP instead of char*
+** TODO Enforce epdb length multiple of two
+Then sl node can store a single pvect pointer and index and key and
+value will always be adjacent in the same pvect.  Will save a pointer
+and an int per sl node.
+** DONE Investigate storing CHARSXP instead of char*
+   CLOSED: [2010-05-27 Thu 17:34]
 Then comparison could be done against CHARSXP pointer.
 And in this case, you could even avoid the hash call and simply
 use the CHARSXP pointer address (or a simple xor hash based on it to
 get to 32bit)
-** TODO Add collision handling
 ** TODO Make hash function pluggable
 One idea is to test using the CHARSXP's address as hash code.
 ** TODO Make max level stored in sl init arg
 ** TODO Make pvect size sl init arg
-** TODO Add a stats extraction function
+** DONE Add a stats extraction function
+   CLOSED: [2010-05-20 Thu 22:32]
 ** DONE Either copy key string or protect CHARSXP
    CLOSED: [2010-05-18 Tue 15:50]
 CHARSXP for key is stored in the epdb.  This adds storage overhead to
 list nodes, but avoids having to copy the key data.
+** DONE Add collision handling
+   CLOSED: [2010-05-20 Thu 22:32]
+** DONE Add list keys function
+   CLOSED: [2010-05-20 Thu 22:31]

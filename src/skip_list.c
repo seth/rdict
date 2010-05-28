@@ -19,8 +19,7 @@
 
 
 typedef struct _lnode {
-    long hash_key;
-    const char *key;
+    SEXP hash_key;
     SEXP key_pvect;
     int key_index;
     SEXP value_pvect;
@@ -112,19 +111,6 @@ int sl_random_level(skip_list *list)
     return level > MAX_LEVEL ? MAX_LEVEL : level;
 }
 
-unsigned long hashdjb2(const char *key)
-{
-/* 
-djb2 a simple hash function
-From: http://www.cse.yorku.ca/~oz/hash.html 
-*/
-    unsigned long hash = 5381;
-    unsigned int c;
-    while ((c = *key++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    return hash;
-}
-
 int sl_put(skip_list *list,
             SEXP key,           /* CHARSXP */
             SEXP s_value)
@@ -132,8 +118,6 @@ int sl_put(skip_list *list,
     SEXP key_pvect, value_pvect;
     int key_index, value_index, k, do_replace = 0;
     lnode *update[MAX_LEVELS], *p, *q;
-    const char *key_str = CHAR(key);
-    unsigned long hash = hashdjb2(key_str);
 
     if (!ep_store(list->epdb, s_value, &value_pvect, &value_index)
         || !ep_store(list->epdb, key, &key_pvect, &key_index)) {
@@ -147,20 +131,14 @@ int sl_put(skip_list *list,
     p = list->head;
     k = list->level;
     for (k = list->level; k >= 0; k--) {
-        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        while ((q = p->forward[k]) && q->hash_key < key) p = q;
         update[k] = p;
     }
-    /* handle hash collisions */
-    p = q;
-    while (p && p->hash_key == hash) {
-        if (p->key == key_str) {
-            q = p;
-            do_replace = 1;
-            break;
-        }
-        p = p->forward[0];
+    if (p->hash_key == key) {
+        do_replace = 1;
+        q = p;
     }
-    
+
     if (!do_replace) {
         k = sl_random_level(list);
         if (k > list->level) {
@@ -175,8 +153,7 @@ int sl_put(skip_list *list,
     q->key_index = key_index;
     q->value_pvect = value_pvect;
     q->value_index = value_index;
-    q->hash_key = hash;
-    q->key = key_str;
+    q->hash_key = key;
     if (!do_replace) {
         while (k >= 0) {
             p = update[k];
@@ -194,57 +171,38 @@ int sl_put(skip_list *list,
 }
 
 int sl_get(skip_list *list,
-            const char *key,
-            SEXP *s_value)
+           SEXP key,
+           SEXP *s_value)
 {
-    unsigned long hash = hashdjb2(key);
     int found = 0, k;
     lnode *p, *q;
 
     p = list->head;
     k = list->level;
     while (k >= 0) {
-        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        while ((q = p->forward[k]) && q->hash_key < key) p = q;
         k--;
     }
 
-    p = q;
-    while (p && p->hash_key == hash) { /* handle hash collisions */
-        if (p->key == key) {
-            q = p;
-            break;
-        }
-        p = p->forward[0];
-    }
-    if (q && q->hash_key == hash) {
-        /* FIXME: deal w/ hash collisions */
+    if (q && q->hash_key == key) {
         found = 1;
         *s_value = VECTOR_ELT(q->value_pvect, q->value_index);
     }
     return found;
 }
 
-int sl_remove(skip_list *list, const char *key)
+int sl_remove(skip_list *list, SEXP key)
 {
     int k, m, found = 0;
     lnode *update[MAX_LEVELS], *p, *q;
-    unsigned long hash = hashdjb2(key);
 
     p = list->head;
     k = m = list->level;
     for (k = list->level; k >= 0; k--) {
-        while ((q = p->forward[k]) && q->hash_key < hash) p = q;
+        while ((q = p->forward[k]) && q->hash_key < key) p = q;
         update[k] = p;
     }
-    p = q;
-    while (p && p->hash_key == hash) { /* handle hash collisions */
-        if (p->key == key) {
-            q = p;
-            break;
-        }
-        p = p->forward[0];
-    }
-    if (q && q->hash_key == hash) {
+    if (q && q->hash_key == key) {
         found = 1;
         for (k = 0; k <= m; k++) {
             p = update[k];
@@ -306,7 +264,7 @@ SEXP rdict_get(SEXP xp, SEXP key)
 {
     SEXP ans;
     skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
-    int found = sl_get(list, CHAR(STRING_ELT(key, 0)), &ans);
+    int found = sl_get(list, STRING_ELT(key, 0), &ans);
     if (found)
         return ans;
     else
@@ -316,7 +274,7 @@ SEXP rdict_get(SEXP xp, SEXP key)
 SEXP rdict_remove(SEXP xp, SEXP key)
 {
     skip_list *list = (skip_list *)R_ExternalPtrAddr(xp);
-    int found = sl_remove(list, CHAR(STRING_ELT(key, 0)));
+    int found = sl_remove(list, STRING_ELT(key, 0));
     return Rf_ScalarLogical(found);
 }
 
@@ -331,7 +289,7 @@ SEXP rdict_keys(SEXP xp)
     if (list->item_count > 0) {
         q = list->head->forward[0];
         for (i = 0; i < list->item_count; i++) {
-            SET_STRING_ELT(keys, i, VECTOR_ELT(q->key_pvect, q->key_index));
+            SET_STRING_ELT(keys, i, q->hash_key);
             q = q->forward[0];
         }
     }
@@ -366,7 +324,7 @@ SEXP rdict_stats(SEXP xp)
     if (list->item_count > 0) {
         q = list->head->forward[0];
         for (i = 0; i < list->item_count; i++) {
-            snprintf(buf, 64, "%lu", q->hash_key);
+            snprintf(buf, 64, "%p", (void *)q->hash_key);
             SET_STRING_ELT(keys, i, mkChar(buf));
             q = q->forward[0];
         }
